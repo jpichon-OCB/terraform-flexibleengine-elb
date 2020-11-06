@@ -11,6 +11,7 @@ variable "subnet_id" {
 variable "vip_address" {
   description = "Address of the VIP (In the same Subnet)"
   type        = string
+  default     = ""
 }
 
 variable "bind_eip" {
@@ -75,11 +76,12 @@ variable "listeners_whitelist" {
 variable "pools" {
   description = "Pools list"
   type = list(object({
-    name           = string
-    protocol       = string
-    lb_method      = string # Load Balancing method (ROUND_ROBIN recommended)
-    listener_index = number # Listenerused in this pool (Can be null)
+    name          = string
+    protocol      = string
+    lb_method     = string # Load Balancing method (ROUND_ROBIN recommended)
+    listener_port = number # Listenerused in this pool (Can be null)
   }))
+  default = []
 }
 
 variable "backends" {
@@ -91,19 +93,22 @@ variable "backends" {
     pool_index    = number
     subnet_id     = string
   }))
+  default = []
 }
 
 variable "backends_addresses" {
   description = "List of backends adresses"
   type        = list
+  default     = []
 }
 
 variable "monitors" {
   description = "List of monitors"
   type = list(object({
     name        = string
-    pool_index  = number
+    pool_name   = string
     protocol    = string
+    port        = number
     delay       = number
     timeout     = number
     max_retries = number
@@ -115,8 +120,9 @@ variable "monitorsHttp" {
   description = "List of monitors HTTP/HTTPS"
   type = list(object({
     name           = string
-    pool_index     = number
+    pool_name      = string
     protocol       = string
+    port           = number
     delay          = number
     timeout        = number
     max_retries    = number
