@@ -66,7 +66,7 @@ variable "listeners" {
 variable "listeners_whitelist" {
   description = "Listeners whitelist"
   type = list(object({
-    listeners_index  = number
+    listener_port   = number
     enable_whitelist = bool
     whitelist        = string #Comma separated : "192.168.11.1,192.168.0.1/24,192.168.201.18/8"
   }))
@@ -79,7 +79,8 @@ variable "pools" {
     name          = string
     protocol      = string
     lb_method     = string # Load Balancing method (ROUND_ROBIN recommended)
-    listener_port = number # Listenerused in this pool (Can be null)
+    listener_port = number # Listenerused in this pool (Can be null). Must be set to null if L7 policies are used.
+    monitor       = {} # Parameters of lbmonitor  describes in https://registry.terraform.io/providers/FlexibleEngineCloud/flexibleengine/latest/docs/resources/lb_monitor_v2
   }))
   default = []
 }
@@ -102,58 +103,20 @@ variable "backends_addresses" {
   default     = []
 }
 
-variable "monitors" {
-  description = "List of monitors"
-  type = list(object({
-    name        = string
-    pool_name   = string
-    protocol    = string
-    port        = number
-    delay       = number
-    timeout     = number
-    max_retries = number
-  }))
-  default = []
-}
-
-variable "monitorsHttp" {
-  description = "List of monitors HTTP/HTTPS"
-  type = list(object({
-    name           = string
-    pool_name      = string
-    protocol       = string
-    port           = number
-    delay          = number
-    timeout        = number
-    max_retries    = number
-    url_path       = string
-    http_method    = string
-    expected_codes = string
-  }))
-  default = []
-}
-
 variable "l7policies" {
-  description = "List of L7 policies redirected to pools/listeners"
+  description = "List of L7 policies redirected to pools/listeners."
   type = list(object({
-    name                    = string
-    action                  = string # REDIRECT_TO_POOL / REDIRECT_TO_LISTENER
-    description             = string
-    position                = number
-    listener_index          = number
-    redirect_listener_index = number # if REDIRECT_TO_LISTENER is set, or null LISTENER must be listen on HTTPS_TERMINATED
-    redirect_pool_index     = number # if REDIRECT_TO_POOL is set, or null - pool used to redirect must be not associated with a listener
-  }))
-  default = []
-}
-
-variable "l7policies_rules" { # Only if REDIRECT_TO_POOL
-  description = "List of L7 policies redirected to pools/listeners"
-  type = list(object({
-    l7policy_index = number
-    type           = string
-    compare_type   = string
-    value          = string
+    name                   = string
+    action                 = string # REDIRECT_TO_POOL / REDIRECT_TO_LISTENER
+    description            = string
+    position               = number
+    listener_port          = number
+    redirect_listener_port = number # if REDIRECT_TO_LISTENER is set, or null LISTENER must be listen on HTTPS_TERMINATED
+    redirect_pool_name     = string # if REDIRECT_TO_POOL is set, or null - pool used to redirect must be not associated with a listener
+    rule_type              = string # set to COOKIE, HEADER, HOST_NAME, PATH
+    rule_compare_type      = string # STARTS_WITH, EQUAL_TO or REGEX
+    rule_value             = string
+    rule_key               = string # if type is set to COOKIE or HEADER. null by default
   }))
   default = []
 }

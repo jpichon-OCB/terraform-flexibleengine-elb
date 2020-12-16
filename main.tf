@@ -82,31 +82,31 @@ resource "flexibleengine_lb_monitor_v2" "monitor_http" {
 }
 
 resource "flexibleengine_lb_whitelist_v2" "whitelists" {
-  count            = length(var.listeners_whitelist)
-  enable_whitelist = var.listeners_whitelist[count.index].enable_whitelist
-  whitelist        = var.listeners_whitelist[count.index].whitelist
-  listener_id      = flexibleengine_lb_listener_v2.listeners[lookup(var.listeners_whitelist[count.index], "listener_index", count.index)].id
+  for_each         = local.elb_whitelist_map
+  enable_whitelist = each.value.enable_whitelist
+  whitelist        = each.value.whitelist
+  listener_id      = flexibleengine_lb_listener_v2.listeners[each.value.listener_port].id
 }
 
-# resource "flexibleengine_lb_l7policy_v2" "l7policies" {
-#   count                = length(var.l7policies)
-#   name                 = var.l7policies[count.index].name
-#   action               = var.l7policies[count.index].action
-#   description          = var.l7policies[count.index].description
-#   position             = var.l7policies[count.index].position
-#   listener_id          = flexibleengine_lb_listener_v2.listeners[lookup(var.l7policies[count.index], "listener_index", count.index)].id
-#   redirect_listener_id = var.l7policies[count.index].redirect_listener_index != null ? flexibleengine_lb_listener_v2.listeners[lookup(var.l7policies[count.index], "redirect_listener_index", count.index)].id : null
-#   redirect_pool_id     = var.l7policies[count.index].redirect_pool_index != null ? flexibleengine_lb_pool_v2.pools[lookup(var.l7policies[count.index], "redirect_pool_index", count.index)].id : null
-# }
+resource "flexibleengine_lb_l7policy_v2" "l7policies" {
+  for_each             = local.elb_l7policies_map
+  name                 = each.value.name
+  action               = each.value.action
+  description          = each.value.description
+  position             = each.value.position
+  listener_id          = flexibleengine_lb_listener_v2.listeners[each.value.listener_port].id
+  redirect_listener_id = each.value.redirect_listener_port != null ? flexibleengine_lb_listener_v2.listeners[each.value.redirect_listener_port].id : null
+  redirect_pool_id     = each.value.redirect_pool_name != null ? flexibleengine_lb_pool_v2.pools[each.value.redirect_pool_name].id : null
+}
 
-# resource "flexibleengine_lb_l7rule_v2" "l7rules" {
-#   count        = length(var.l7policies_rules)
-#   l7policy_id  = flexibleengine_lb_l7policy_v2.l7policies[lookup(var.l7policies_rules[count.index], "l7policy_index", count.index)].id
-#   type         = var.l7policies_rules[count.index].type
-#   compare_type = var.l7policies_rules[count.index].compare_type
-#   value        = var.l7policies_rules[count.index].value
-# }
-
+resource "flexibleengine_lb_l7rule_v2" "l7rules" {
+  for_each     = local.elb_l7policies_map
+  l7policy_id  = flexibleengine_lb_l7policy_v2.l7policies["${each.value.name}-${each.value.listener_port}"].id
+  type         = each.value.rule_type
+  compare_type = each.value.rule_compare_type
+  value        = each.value.rule_value
+  key          = each.value.rule_key
+}
 
 locals {
   elb_listeners_keys  = [for listener in var.listeners : listener.port]
@@ -124,4 +124,12 @@ locals {
   elb_monitorsHttp_keys   = var.monitorsHttp != [] ? [for monitorHttp in var.monitorsHttp : monitorHttp.name] : null
   elb_monitorsHttp_values = var.monitorsHttp != [] ? [for monitorHttp in var.monitorsHttp : monitorHttp] : null
   elb_monitorsHttp_map    = var.monitorsHttp != [] ? zipmap(local.elb_monitorsHttp_keys, local.elb_monitorsHttp_values) : null
+
+  elb_l7policies_keys   = var.l7policies != [] ? [for l7policy in var.l7policies : "${l7policy.name}-${l7policy.listener_port}"] : null
+  elb_l7policies_values = var.l7policies != [] ? [for l7policy in var.l7policies : l7policy] : null
+  elb_l7policies_map    = var.l7policies != [] ? zipmap(local.elb_l7policies_keys, local.elb_l7policies_values) : null
+
+  elb_whitelist_keys   = var.listeners_whitelist != [] ? [for whitelist in var.listeners_whitelist : whitelist.listener_port] : null
+  elb_whitelist_values = var.listeners_whitelist != [] ? [for whitelist in var.listeners_whitelist : whitelist] : null
+  elb_whitelist_map    = var.listeners_whitelist != [] ? zipmap(local.elb_whitelist_keys, local.elb_whitelist_values) : null
 }
